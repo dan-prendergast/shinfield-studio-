@@ -31,18 +31,16 @@
 <body class="bg-slate-50 text-slate-800">
   <!-- Header -->
   <header class="w-full border-b bg-white">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-      <div class="flex-1">
-        <h1 class="text-2xl font-semibold">Shinfield Studios — Visitor Map</h1>
-        <p class="text-sm text-slate-600">Key amenities with approximate driving distance (mi) & time (min) from the studio.</p>
+    <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-4 items-center text-center">
+      <h1 class="text-4xl font-bold text-indigo-700">Shinfield Studios — Visitor Map</h1>
+      <p class="text-base text-slate-600">Key amenities with approximate driving distance (mi) & time (min) from the studio.</p>
+      <div class="w-full">
+        <!-- Studio site map image stretched across header -->
+        <img src="https://tse2.mm.bing.net/th/id/OIP.TY5wE_SClbkj3SByDZLOogHaGi" alt="Shinfield Studios Site Map" class="w-full max-h-64 object-contain rounded shadow" />
       </div>
-      <div class="flex-shrink-0">
-        <!-- Studio site map image -->
-        <img src="https://tse2.mm.bing.net/th/id/OIP.TY5wE_SClbkj3SByDZLOogHaGi" alt="Shinfield Studios Site Map" class="w-48 rounded shadow" />
+      <div class="text-xs text-slate-500">
+        <span>Last updated: Sep 2025</span>
       </div>
-    </div>
-    <div class="max-w-7xl mx-auto px-4 pb-2 text-xs text-slate-500">
-      <span>Last updated: Sep 2025</span>
     </div>
   </header>
 
@@ -53,16 +51,16 @@
       <div id="map"></div>
     </section>
 
-    <!-- Sidebar: Movement Order & POI list -->
+    <!-- Sidebar: Suggested Amenities & POI list -->
     <aside class="lg:col-span-1 bg-white rounded-2xl shadow divide-y">
       <div class="p-4">
-        <h2 class="text-lg font-semibold mb-2">Suggested Movement Order</h2>
+        <h2 class="text-lg font-semibold mb-2">Suggested Amenities</h2>
         <ol class="list-decimal list-inside space-y-1 text-sm">
           <li><strong>Immediate essentials (0–5 min)</strong>: Tesco Express; Esso Petrol; Shinfield Pharmacy.</li>
           <li><strong>Lower Earley cluster (~6 min)</strong>: McDonald’s; M&S Simply Food; Greggs (all at The Square / Chalfont Way).</li>
           <li><strong>Larger needs</strong>: Morrisons (full shop); Screwfix (tools & fixings).</li>
           <li><strong>Health & emergencies</strong>: Royal Berkshire Hospital; Pharmacy for minor needs.</li>
-          <li><strong>Alternative fuel</strong>: ASDA Petrol (Chalfont Way, 24‑h).</li>
+          <li><strong>Alternative fuel</strong>: ASDA Petrol (Chalfont Way, 24-h).</li>
         </ol>
       </div>
       <div class="p-4">
@@ -81,21 +79,14 @@
     </aside>
   </main>
 
-  <footer class="max-w-7xl mx-auto px-4 pb-6 text-xs text-slate-500">
+  <footer class="max-w-7xl mx-auto px-4 pb-6 text-xs text-slate-500 text-center">
     <p>
       Map data © <a class="underline" href="https://www.openstreetmap.org/" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors. Distances & times are approximate (typical traffic). No API keys required.
     </p>
   </footer>
 
   <script>
-    // --- Studio (map center) ---
-    const studio = {
-      name: "Shinfield Studios",
-      lat: 51.415496, // Wikipedia coords
-      lng: -0.938695
-    };
-
-    // --- Points of Interest ---
+    const studio = { name: "Shinfield Studios", lat: 51.415496, lng: -0.938695 };
     const pois = [
       { name: "Tesco Express (203–207 Shinfield Rd)", category: "Supermarket", lat: 51.427981, lng: -0.945786, distanceMi: 0.2, driveMin: 2 },
       { name: "Esso Petrol (211 Shinfield Rd)", category: "Petrol", lat: 51.42787, lng: -0.94560, distanceMi: 0.3, driveMin: 2 },
@@ -110,10 +101,7 @@
     ];
 
     const map = L.map('map');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
     map.setView([studio.lat, studio.lng], 14);
 
     const studioMarker = L.marker([studio.lat, studio.lng]).addTo(map);
