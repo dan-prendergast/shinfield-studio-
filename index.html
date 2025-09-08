@@ -9,34 +9,24 @@
   <!-- Tailwind (CDN) for quick styling on GitHub Pages -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Leaflet (no API key required) -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
-
   <style>
     html, body { height: 100%; }
     #map { height: 100%; min-height: 480px; }
-    .leaflet-popup-content { font-size: 0.95rem; }
+    .gm-style .gm-style-iw-c { font-size: 0.95rem; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
   <!-- Header -->
   <header class="w-full border-b bg-white">
     <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-4 items-center text-center">
-      <h1 class="text-4xl font-bold text-indigo-700">Shinfield Studios — Visitor Map</h1>
+      <h1 class="text-4xl font-bold text-indigo-700">Shinfield Studios — Visitor Map & Amenities</h1>
       <p class="text-base text-slate-600">Key amenities with approximate driving distance (mi) & time (min) from the studio.</p>
       <div class="w-full">
-        <!-- Studio site map image stretched across header -->
-        <img src="https://tse2.mm.bing.net/th/id/OIP.TY5wE_SClbkj3SByDZLOogHaGi" alt="Shinfield Studios Site Map" class="w-full max-h-64 object-contain rounded shadow" />
+        <!-- Studio site map image stretched across header with clickable enlarge link -->
+        <a href="https://tse2.mm.bing.net/th/id/OIP.TY5wE_SClbkj3SByDZLOogHaGi" target="_blank" rel="noopener noreferrer">
+          <img src="https://tse2.mm.bing.net/th/id/OIP.TY5wE_SClbkj3SByDZLOogHaGi" alt="Shinfield Studios Site Map" class="w-full max-h-64 object-contain rounded shadow hover:opacity-90" />
+        </a>
+        <p class="text-xs text-slate-500 mt-1">Click the map to view full size in a new tab.</p>
       </div>
       <div class="text-xs text-slate-500">
         <span>Last updated: Sep 2025</span>
@@ -46,9 +36,13 @@
 
   <!-- Layout -->
   <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
-    <!-- Map -->
-    <section class="lg:col-span-2 h-[70vh] lg:h-[78vh] rounded-2xl overflow-hidden shadow">
+    <!-- Map (Google Maps) -->
+    <section class="lg:col-span-2 h-[70vh] lg:h-[78vh] rounded-2xl overflow-hidden shadow relative">
+      <a href="https://www.google.com/maps/dir/?api=1&origin=Shinfield+Studios,+South+Avenue,+Reading&destination=Shinfield+Studios,+South+Avenue,+Reading" target="_blank" rel="noopener noreferrer" class="absolute inset-0 z-10" title="Open in Google Maps"></a>
       <div id="map"></div>
+      <noscript>
+        <div class="p-4 text-sm text-red-700">This map requires JavaScript. Please enable it in your browser.</div>
+      </noscript>
     </section>
 
     <!-- Sidebar: Suggested Amenities & POI list -->
@@ -81,12 +75,15 @@
 
   <footer class="max-w-7xl mx-auto px-4 pb-6 text-xs text-slate-500 text-center">
     <p>
-      Map data © <a class="underline" href="https://www.openstreetmap.org/" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors. Distances & times are approximate (typical traffic). No API keys required.
+      Map data © Google. Distances & times are approximate (typical traffic). You will need a Google Maps JavaScript API key.
     </p>
   </footer>
 
   <script>
+    // --- Studio (map center) ---
     const studio = { name: "Shinfield Studios", lat: 51.415496, lng: -0.938695 };
+
+    // --- Points of Interest ---
     const pois = [
       { name: "Tesco Express (203–207 Shinfield Rd)", category: "Supermarket", lat: 51.427981, lng: -0.945786, distanceMi: 0.2, driveMin: 2 },
       { name: "Esso Petrol (211 Shinfield Rd)", category: "Petrol", lat: 51.42787, lng: -0.94560, distanceMi: 0.3, driveMin: 2 },
@@ -100,49 +97,94 @@
       { name: "ASDA Petrol (Chalfont Way, Lower Earley)", category: "Petrol", lat: 51.423325, lng: -0.9324726, distanceMi: 1.5, driveMin: 5 }
     ];
 
-    const map = L.map('map');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-    map.setView([studio.lat, studio.lng], 14);
+    let map, infoWindow, markers = [];
 
-    const studioMarker = L.marker([studio.lat, studio.lng]).addTo(map);
-    studioMarker.bindPopup(`<strong>${studio.name}</strong><br>South Avenue, RG2 9LH`);
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: studio.lat, lng: studio.lng },
+        zoom: 14,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true
+      });
 
-    const markers = [];
-    function addMarker(p) {
-      const m = L.marker([p.lat, p.lng]).addTo(map);
-      m.bindPopup(`<strong>${p.name}</strong><br><em>${p.category}</em><br>${p.distanceMi.toFixed(1)} mi · ~${p.driveMin} min drive`);
-      markers.push(m);
+      infoWindow = new google.maps.InfoWindow();
+
+      // Studio marker
+      const studioMarker = new google.maps.Marker({
+        position: { lat: studio.lat, lng: studio.lng },
+        map,
+        title: studio.name,
+        icon: {
+          path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+          scale: 6,
+          fillColor: '#4f46e5',
+          fillOpacity: 1,
+          strokeColor: '#312e81',
+          strokeWeight: 1
+        }
+      });
+      studioMarker.addListener('click', () => {
+        infoWindow.setContent(`<strong>${studio.name}</strong><br>South Avenue, RG2 9LH`);
+        infoWindow.open(map, studioMarker);
+      });
+
+      // POI markers
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(studioMarker.getPosition());
+
+      pois.forEach(p => {
+        const marker = new google.maps.Marker({ position: { lat: p.lat, lng: p.lng }, map, title: p.name });
+        marker.addListener('click', () => {
+          infoWindow.setContent(`<strong>${p.name}</strong><br><em>${p.category}</em><br>${p.distanceMi.toFixed(1)} mi · ~${p.driveMin} min drive<br><a href='https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(studio.name + ", South Avenue, Reading")}&destination=${encodeURIComponent(p.name)}' target='_blank' rel='noopener noreferrer' class='text-indigo-600 underline'>Directions from Shinfield Studios</a>`);
+          infoWindow.open(map, marker);
+        });
+        markers.push({ marker, data: p });
+        bounds.extend(marker.getPosition());
+      });
+
+      map.fitBounds(bounds, 40);
+      buildList('distance');
+
+      document.getElementById('sortSelect').addEventListener('change', (e) => {
+        buildList(e.target.value);
+      });
     }
-    pois.forEach(addMarker);
 
-    const group = L.featureGroup(markers.concat(studioMarker));
-    map.fitBounds(group.getBounds().pad(0.15));
+    function buildList(sortBy = 'distance') {
+      const list = document.getElementById('poiList');
+      const items = markers.map(m => m);
 
-    const list = document.getElementById('poiList');
-    function renderList(sortBy = 'distance') {
-      const items = [...pois];
-      if (sortBy === 'distance') items.sort((a,b) => a.distanceMi - b.distanceMi);
-      if (sortBy === 'time') items.sort((a,b) => a.driveMin - b.driveMin);
-      if (sortBy === 'name') items.sort((a,b) => a.name.localeCompare(b.name));
+      if (sortBy === 'distance') items.sort((a,b) => a.data.distanceMi - b.data.distanceMi);
+      if (sortBy === 'time') items.sort((a,b) => a.data.driveMin - b.data.driveMin);
+      if (sortBy === 'name') items.sort((a,b) => a.data.name.localeCompare(b.data.name));
+
       list.innerHTML = '';
-      items.forEach(p => {
+      items.forEach(({ marker, data }) => {
         const li = document.createElement('li');
-        li.dataset.name = p.name;
         li.className = 'border rounded-xl p-3 hover:bg-slate-50 cursor-pointer';
-        li.innerHTML = `<div class=\"text-sm font-medium\">${p.name}</div><div class=\"text-xs text-slate-600\">${p.category} • ${p.distanceMi.toFixed(1)} mi • ~${p.driveMin} min</div>`;
+        li.innerHTML = `
+          <div class=\"text-sm font-medium\">${data.name}</div>
+          <div class=\"text-xs text-slate-600\">${data.category} • ${data.distanceMi.toFixed(1)} mi • ~${data.driveMin} min</div>
+          <a href='https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(studio.name + ", South Avenue, Reading")}&destination=${encodeURIComponent(data.name)}' target='_blank' rel='noopener noreferrer' class='text-indigo-600 underline text-xs'>Directions from Shinfield Studios</a>
+        `;
         li.addEventListener('click', () => {
-          map.flyTo([p.lat, p.lng], 16, { duration: 0.6 });
-          const mk = markers.find(mk => {
-            const pos = mk.getLatLng();
-            return Math.abs(pos.lat - p.lat) < 1e-6 && Math.abs(pos.lng - p.lng) < 1e-6;
-          });
-          mk && mk.openPopup();
+          map.panTo(marker.getPosition());
+          map.setZoom(16);
+          google.maps.event.trigger(marker, 'click');
+          li.classList.add('ring', 'ring-indigo-400');
+          setTimeout(() => li.classList.remove('ring', 'ring-indigo-400'), 1200);
         });
         list.appendChild(li);
       });
     }
-    renderList('distance');
-    document.getElementById('sortSelect').addEventListener('change', e => renderList(e.target.value));
+
+    // Expose initMap for Google callback
+    window.initMap = initMap;
   </script>
+
+  <!-- Google Maps JavaScript API -->
+  <!-- IMPORTANT: Replace YOUR_API_KEY with your actual key. Enable Maps JavaScript API in Google Cloud Console. -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
 </body>
 </html>
