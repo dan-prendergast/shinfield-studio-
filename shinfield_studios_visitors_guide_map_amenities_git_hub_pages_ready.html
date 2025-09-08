@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shinfield Studios — Visitor Map & Movement Order</title>
+  <meta name="description" content="Visitor-friendly map of key amenities around Shinfield Studios with driving distances and times." />
+  
+  <!-- Tailwind (CDN) for quick styling on GitHub Pages -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet (no API key required) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <style>
+    html, body { height: 100%; }
+    #map { height: 100%; min-height: 480px; }
+    .leaflet-popup-content { font-size: 0.95rem; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!-- Header -->
+  <header class="w-full border-b bg-white">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row gap-2 sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold">Shinfield Studios — Visitor Map</h1>
+        <p class="text-sm text-slate-600">Key amenities with approximate driving distance (mi) & time (min) from the studio.</p>
+      </div>
+      <div class="text-xs text-slate-500">
+        <span>Last updated: Sep 2025</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
+    <!-- Map -->
+    <section class="lg:col-span-2 h-[70vh] lg:h-[78vh] rounded-2xl overflow-hidden shadow">
+      <div id="map"></div>
+    </section>
+
+    <!-- Sidebar: Movement Order & POI list -->
+    <aside class="lg:col-span-1 bg-white rounded-2xl shadow divide-y">
+      <div class="p-4">
+        <h2 class="text-lg font-semibold mb-2">Suggested Movement Order</h2>
+        <ol class="list-decimal list-inside space-y-1 text-sm">
+          <li><strong>Immediate essentials (0–5 min)</strong>: Tesco Express; Esso Petrol; Shinfield Pharmacy.</li>
+          <li><strong>Lower Earley cluster (~6 min)</strong>: McDonald’s; M&S Simply Food; Greggs (all at The Square / Chalfont Way).</li>
+          <li><strong>Larger needs</strong>: Morrisons (full shop); Screwfix (tools & fixings).</li>
+          <li><strong>Health & emergencies</strong>: Royal Berkshire Hospital; Pharmacy for minor needs.</li>
+          <li><strong>Alternative fuel</strong>: ASDA Petrol (Chalfont Way, 24‑h).</li>
+        </ol>
+      </div>
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-semibold">All Amenities</h3>
+          <label class="text-xs text-slate-600">Sort by
+            <select id="sortSelect" class="ml-1 border rounded px-2 py-1 text-xs">
+              <option value="distance">Distance (mi)</option>
+              <option value="time">Drive time (min)</option>
+              <option value="name">Name (A–Z)</option>
+            </select>
+          </label>
+        </div>
+        <ul id="poiList" class="space-y-2 text-sm"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 pb-6 text-xs text-slate-500">
+    <p>
+      Map data © <a class="underline" href="https://www.openstreetmap.org/" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors. Distances & times are approximate (typical traffic). No API keys required.
+    </p>
+  </footer>
+
+  <script>
+    // --- Studio (map center) ---
+    const studio = {
+      name: "Shinfield Studios",
+      lat: 51.415496, // Wikipedia coords
+      lng: -0.938695
+    };
+
+    // --- Points of Interest (from your brief) ---
+    // NOTE: Distances & times are the visitor‑friendly approximations you approved earlier.
+    const pois = [
+      // Immediate essentials
+      { name: "Tesco Express (203–207 Shinfield Rd)", category: "Supermarket", lat: 51.427981, lng: -0.945786, distanceMi: 0.2, driveMin: 2 },
+      { name: "Esso Petrol (211 Shinfield Rd)", category: "Petrol", lat: 51.42787, lng: -0.94560, distanceMi: 0.3, driveMin: 2 },
+      { name: "Shinfield Pharmacy (School Green)", category: "Pharmacy", lat: 51.40419, lng: -0.94874, distanceMi: 0.5, driveMin: 3 },
+
+      // Lower Earley cluster
+      { name: "McDonald’s (The Square, Lower Earley)", category: "Fast Food", lat: 51.423233, lng: -0.934716, distanceMi: 2.0, driveMin: 6 },
+      { name: "M&S Simply Food (3 The Square, Lower Earley)", category: "Supermarket", lat: 51.423016, lng: -0.9349004, distanceMi: 2.0, driveMin: 6 },
+      { name: "Greggs (Chalfont Way, Lower Earley)", category: "Bakery/Coffee", lat: 51.42457, lng: -0.93274, distanceMi: 2.1, driveMin: 6 },
+
+      // Larger needs
+      { name: "Morrisons (Basingstoke Rd)", category: "Supermarket", lat: 51.434118, lng: -0.970483, distanceMi: 1.0, driveMin: 4 },
+      { name: "Screwfix (Tilehurst, Stadium Way)", category: "Hardware/DIY", lat: 51.463272, lng: -1.013296, distanceMi: 4.1, driveMin: 11 },
+
+      // Health & emergencies
+      { name: "Royal Berkshire Hospital (London Rd)", category: "Hospital", lat: 51.449038, lng: -0.958427, distanceMi: 1.0, driveMin: 4 },
+
+      // Alternative fuel
+      { name: "ASDA Petrol (Chalfont Way, Lower Earley)", category: "Petrol", lat: 51.423325, lng: -0.9324726, distanceMi: 1.5, driveMin: 5 }
+    ];
+
+    // --- Leaflet map setup ---
+    const map = L.map('map');
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Fit to markers later; start centered on the studio
+    map.setView([studio.lat, studio.lng], 14);
+
+    // Studio marker
+    const studioMarker = L.marker([studio.lat, studio.lng]).addTo(map);
+    studioMarker.bindPopup(`<strong>${studio.name}</strong><br>South Avenue, RG2 9LH`);
+
+    // POI markers & list
+    const markers = [];
+
+    function addMarker(p) {
+      const m = L.marker([p.lat, p.lng]).addTo(map);
+      m.bindPopup(`<strong>${p.name}</strong><br><em>${p.category}</em><br>${p.distanceMi.toFixed(1)} mi · ~${p.driveMin} min drive`);
+      m.on('click', () => {
+        // highlight item in list on map click
+        const li = document.querySelector(`[data-name="${CSS.escape(p.name)}"]`);
+        if (li) li.classList.add('ring', 'ring-indigo-400');
+        setTimeout(() => li && li.classList.remove('ring', 'ring-indigo-400'), 1200);
+      });
+      markers.push(m);
+    }
+
+    pois.forEach(addMarker);
+
+    // Fit bounds to all markers
+    const group = L.featureGroup(markers.concat(studioMarker));
+    map.fitBounds(group.getBounds().pad(0.15));
+
+    // Build sidebar list
+    const list = document.getElementById('poiList');
+
+    function renderList(sortBy = 'distance') {
+      const items = [...pois];
+      if (sortBy === 'distance') items.sort((a,b) => a.distanceMi - b.distanceMi);
+      if (sortBy === 'time') items.sort((a,b) => a.driveMin - b.driveMin);
+      if (sortBy === 'name') items.sort((a,b) => a.name.localeCompare(b.name));
+
+      list.innerHTML = '';
+      items.forEach(p => {
+        const li = document.createElement('li');
+        li.dataset.name = p.name;
+        li.className = 'border rounded-xl p-3 hover:bg-slate-50 cursor-pointer';
+        li.innerHTML = `
+          <div class="text-sm font-medium">${p.name}</div>
+          <div class="text-xs text-slate-600">${p.category} • ${p.distanceMi.toFixed(1)} mi • ~${p.driveMin} min</div>
+        `;
+        li.addEventListener('click', () => {
+          map.flyTo([p.lat, p.lng], 16, { duration: 0.6 });
+          // open the corresponding popup
+          const mk = markers.find(mk => {
+            const pos = mk.getLatLng();
+            return Math.abs(pos.lat - p.lat) < 1e-6 && Math.abs(pos.lng - p.lng) < 1e-6;
+          });
+          mk && mk.openPopup();
+        });
+        list.appendChild(li);
+      });
+    }
+
+    renderList('distance');
+
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
+      renderList(e.target.value);
+    });
+  </script>
+</body>
+</html>
