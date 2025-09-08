@@ -14,6 +14,8 @@
     #map { height: 100%; min-height: 480px; }
     .gm-style .gm-style-iw-c { font-size: 0.95rem; }
   </style>
+  
+  <!-- Leaflet fallback assets will be injected dynamically only if Google Maps fails -->
 </head>
 <body class="bg-slate-50 text-slate-800">
   <!-- Header -->
@@ -40,6 +42,9 @@
     <section class="lg:col-span-2 h-[70vh] lg:h-[78vh] rounded-2xl overflow-hidden shadow relative">
       <a href="https://www.google.com/maps/dir/?api=1&origin=Shinfield+Studios,+South+Avenue,+Reading&destination=Shinfield+Studios,+South+Avenue,+Reading" target="_blank" rel="noopener noreferrer" class="absolute inset-0 z-10" title="Open in Google Maps"></a>
       <div id="map"></div>
+      <div id="mapError" class="hidden absolute bottom-2 left-2 right-2 mx-2 bg-amber-100 text-amber-900 text-xs rounded px-3 py-2 shadow">
+        Having trouble loading Google Maps. Showing fallback map instead.
+      </div>
       <noscript>
         <div class="p-4 text-sm text-red-700">This map requires JavaScript. Please enable it in your browser.</div>
       </noscript>
@@ -181,10 +186,44 @@
 
     // Expose initMap for Google callback
     window.initMap = initMap;
+
+    // --- Fallback: if Google Maps fails to load, automatically load Leaflet ---
+    function initLeafletFallback() {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(css);
+
+      const js = document.createElement('script');
+      js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      js.onload = () => {
+        const mapEl = document.getElementById('map');
+        const warn = document.getElementById('mapError');
+        if (warn) warn.classList.remove('hidden');
+        const lmap = L.map(mapEl).setView([studio.lat, studio.lng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(lmap);
+        const studioMarker = L.marker([studio.lat, studio.lng]).addTo(lmap).bindPopup(`<strong>${studio.name}</strong><br>South Avenue, RG2 9LH`);
+        const group = [studioMarker];
+        pois.forEach(p => {
+          const m = L.marker([p.lat, p.lng]).addTo(lmap).bindPopup(`<strong>${p.name}</strong><br><em>${p.category}</em><br>${p.distanceMi.toFixed(1)} mi · ~${p.driveMin} min`);
+          group.push(m);
+        });
+        const fg = L.featureGroup(group);
+        lmap.fitBounds(fg.getBounds().pad(0.15));
+      };
+      document.body.appendChild(js);
+    }
+
+    // If the Google Maps script fails to load or no API key, trigger fallback after timeout
+    setTimeout(() => {
+      if (!window.google || !window.google.maps) {
+        initLeafletFallback();
+      }
+    }, 3000);
   </script>
 
   <!-- Google Maps JavaScript API -->
   <!-- IMPORTANT: Replace YOUR_API_KEY with your actual key. Enable Maps JavaScript API in Google Cloud Console. -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+  <script id="gmaps" src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer onerror="initLeafletFallback()"></script>
 </body>
 </html>
